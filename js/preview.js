@@ -16,22 +16,33 @@ app.registerExtension({
             const urlWidget = this.widgets?.find(w => w.name === "url");
             if (!sourceWidget || !urlWidget) return;
 
+            // Clear any inherited/cached images
             this.urlImg = null;
             this.fileImg = null;
+            this.imgs = null;  // Clear native preview too
             this.srcMode = sourceWidget.value || "file";
+            this._lastLoadedUrl = null;
+            this._lastLoadedFile = null;
 
             const loadUrl = (url) => {
                 if (!url || !url.startsWith("http")) { node.urlImg = null; return; }
+                if (url === node._lastLoadedUrl && node.urlImg) return; // Already loaded
+                node._lastLoadedUrl = url;
                 const img = new Image();
                 img.onload = () => { node.urlImg = img; app.graph.setDirtyCanvas(true, false); };
+                img.onerror = () => { node.urlImg = null; };
                 img.src = url;
             };
 
             const loadFile = (filename) => {
                 if (!filename) { node.fileImg = null; return; }
+                if (filename === node._lastLoadedFile && node.fileImg) return; // Already loaded
+                node._lastLoadedFile = filename;
                 const img = new Image();
                 img.onload = () => { node.fileImg = img; app.graph.setDirtyCanvas(true, false); };
-                img.src = `/view?filename=${encodeURIComponent(filename)}&type=input`;
+                img.onerror = () => { node.fileImg = null; };
+                // Add cache-buster
+                img.src = `/view?filename=${encodeURIComponent(filename)}&type=input&t=${Date.now()}`;
             };
 
             // Custom upload button
@@ -72,8 +83,12 @@ app.registerExtension({
 
             sourceWidget.callback = (v) => {
                 node.srcMode = v;
+                // Clear both previews when switching
+                node.urlImg = null;
+                node.fileImg = null;
                 if (v === "url") loadUrl(urlWidget.value);
                 if (v === "file" && imageWidget) loadFile(imageWidget.value);
+                app.graph.setDirtyCanvas(true, false);
             };
 
             urlWidget.callback = (v) => {
@@ -86,10 +101,36 @@ app.registerExtension({
                     if (origCallback) origCallback.apply(this, arguments);
                     if (node.srcMode === "file") loadFile(v);
                 };
-                if (imageWidget.value) loadFile(imageWidget.value);
             }
 
-            if (this.srcMode === "url" && urlWidget.value) loadUrl(urlWidget.value);
+            // Only load preview for current mode on startup
+            if (this.srcMode === "url" && urlWidget.value) {
+                loadUrl(urlWidget.value);
+            } else if (this.srcMode === "file" && imageWidget && imageWidget.value) {
+                loadFile(imageWidget.value);
+            }
+
+            // Handle workflow load - clear and reload correct preview
+            const onConfigure = this.onConfigure;
+            this.onConfigure = function() {
+                if (onConfigure) onConfigure.apply(this, arguments);
+                // Clear cached images
+                node.urlImg = null;
+                node.fileImg = null;
+                node.imgs = null;
+                node._lastLoadedUrl = null;
+                node._lastLoadedFile = null;
+                // Update mode from widget
+                node.srcMode = sourceWidget.value || "file";
+                // Load correct preview after short delay
+                setTimeout(() => {
+                    if (node.srcMode === "url" && urlWidget.value) {
+                        loadUrl(urlWidget.value);
+                    } else if (node.srcMode === "file" && imageWidget && imageWidget.value) {
+                        loadFile(imageWidget.value);
+                    }
+                }, 100);
+            };
         };
 
         const onDraw = nodeType.prototype.onDrawForeground;
