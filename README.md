@@ -18,7 +18,7 @@ Search for "Load Image URL" in ComfyUI Manager and click Install.
 1. Navigate to your ComfyUI's `custom_nodes` folder
 2. Clone this repository:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/comfyui-load-image-url.git load_image_url
+   git clone https://github.com/Braeden90000/comfyui-load-image-url.git load_image_url
    ```
 3. Restart ComfyUI
 
