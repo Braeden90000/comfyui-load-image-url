@@ -1,0 +1,11 @@
+[project]
+name = "comfyui-load-image-url"
+version = "1.0.0"
+description = "Load images from files or URLs with live preview in ComfyUI"
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = ["requests"]
+
+[project.urls]
+Repository = "https://github.com/YOUR_USERNAME/comfyui-load-image-url"
